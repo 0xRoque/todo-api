@@ -1,6 +1,11 @@
 // Importa o Express — framework para criar servidores e APIs em Node.js
 const express = require("express");
 
+const Task = require("./Task");
+
+require("dotenv").config();
+const mongoose = require("mongoose");
+
 // Cria uma instância da aplicação Express
 const app = express();
 
@@ -8,13 +13,10 @@ const app = express();
 // Tem de estar antes de todas as rotas
 app.use(express.json());
 
-// Array em memória que simula uma base de dados
-// Em produção isto seria substituído por uma base de dados real (MongoDB, PostgreSQL)
-let tasks = [
-  { id: 1, title: "Estudar Node.js", completed: false },
-  { id: 2, title: "Fazer Exercicio", completed: true },
-  { id: 3, title: "Ler Livro", completed: false },
-];
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(() => console.log("Ligado ao MongoDB"))
+  .catch((err) => console.log("Error:", err));
 
 // GET / — rota raiz, confirma que o servidor está a funcionar
 app.get("/", (req, res) => {
@@ -22,42 +24,78 @@ app.get("/", (req, res) => {
 });
 
 // GET /tasks — devolve todas as tarefas em JSON
-app.get("/tasks", (req, res) => {
-  res.json(tasks);
+app.get("/tasks", async (req, res) => {
+  try {
+    const tasks = await Task.find();
+    res.json(tasks);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/tasks/:id", async (req, res) => {
+  try {
+    const findTask = await Task.findById(req.params.id);
+    if (findTask != null) {
+      res.status(200).json(findTask);
+    } else {
+      res.status(404).json({ message: "Tarefa não encontrada" });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // POST /tasks — cria uma nova tarefa
 // Os dados da nova tarefa vêm no body do pedido (req.body)
-app.post("/tasks", (req, res) => {
-  const newTask = {
-    id: tasks.length + 1,   // gera um id incremental
-    title: req.body.title,  // título vem do body
-    completed: false,        // nova tarefa começa sempre por fazer
-  };
-  tasks.push(newTask);               // adiciona ao array
-  res.status(201).json(newTask);     // 201 Created — devolve a tarefa criada
+app.post("/tasks", async (req, res) => {
+  try {
+    if (typeof req.body.title !== "string" || req.body.title.trim() === "") {
+      return res.status(400).json({ message: "Titulo tem que conter texto" });
+    }
+    const task = new Task({
+      title: req.body.title,
+      completed: req.body.completed || false,
+    });
+    const newTask = await task.save();
+    res.status(201).json(newTask);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+// PUT /tasks/:id — atualiza a tarefa com o id especificado
+app.put("/tasks/:id", async (req, res) => {
+  try {
+    const updatedTask = await Task.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
+    if (updatedTask != null) {
+      res.status(200).json(updatedTask);
+    } else {
+      res
+        .status(404)
+        .json({ message: "Tarefa não foi atualizada, ID não existe" });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // DELETE /tasks/:id — apaga a tarefa com o id especificado
 // :id é um parâmetro dinâmico — acessível via req.params.id
-app.delete("/tasks/:id", (req, res) => {
-  const id = req.params.id;
-  // filter mantém todas as tarefas EXCETO a que tem o id recebido
-  // Number() converte o id de string para número para comparação correta
-  tasks = tasks.filter((element) => element.id !== Number(id));
-  res.status(200).json({ message: "Tarefa apagada!" });
-});
-
-// PUT /tasks/:id — atualiza a tarefa com o id especificado
-app.put("/tasks/:id", (req, res) => {
-  const id = req.params.id;
-  // find devolve a tarefa encontrada — um objeto, não um array
-  const task = tasks.find((element) => element.id === Number(id));
-  // atualiza o título — se não vier no body, mantém o atual
-  task.title = req.body.title || task.title;
-  // atualiza o completed — verifica undefined porque false é um valor válido
-  task.completed = req.body.completed !== undefined ? req.body.completed : task.completed;
-  res.status(200).json({ message: "Tarefa atualizada" });
+app.delete("/tasks/:id", async (req, res) => {
+  try {
+    const deleteTask = await Task.findByIdAndDelete(req.params.id);
+    if (deleteTask != null) {
+      res.status(200).json({ message: "Tarefa apagada" });
+    } else {
+      res
+        .status(404)
+        .json({ message: "Tarefa não existe, não pode ser apagada" });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // Inicia o servidor na porta 3000
