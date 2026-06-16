@@ -2,6 +2,16 @@
 
 A REST API built with Node.js, Express and MongoDB with full CRUD operations.
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-online-brightgreen)](https://todo-api-sbyj.onrender.com/tasks)
+
+## Live Demo
+
+The API is deployed on Render: **https://todo-api-sbyj.onrender.com**
+
+Try it: [`GET /tasks`](https://todo-api-sbyj.onrender.com/tasks)
+
+> Note: the free instance sleeps after inactivity, so the first request may take ~30-50s to wake up.
+
 ## Endpoints
 
 | Method | Route | Description |
