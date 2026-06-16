@@ -98,7 +98,7 @@ app.delete("/tasks/:id", async (req, res) => {
   }
 });
 
-// Inicia o servidor na porta 3000
-app.listen(3000, () => {
-  console.log("Servidor a correr na porta 3000");
+const PORT = process.env.PORT || 3000
+app.listen(PORT, () => {
+  console.log(`Servidor a correr na porta ${3000}`);
 });
